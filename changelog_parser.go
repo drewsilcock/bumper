@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/dustin/go-humanize"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
 	"regexp"
 	"time"
+
+	"github.com/dustin/go-humanize"
+	"github.com/rs/zerolog/log"
 )
 
 var unreleasedHeaderRe = regexp.MustCompile(`(?m)^## (Unreleased|Development)$`)

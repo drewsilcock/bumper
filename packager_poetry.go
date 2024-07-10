@@ -3,13 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/Masterminds/semver"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
 	"regexp"
+
+	"github.com/BurntSushi/toml"
+	"github.com/Masterminds/semver"
+	"github.com/rs/zerolog/log"
 )
 
 var tomlVersionRe = regexp.MustCompile(`^(\s+)version\s*=\s*"[^"]+"\s*$`)

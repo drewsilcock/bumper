@@ -3,8 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/xanzy/go-gitlab"
 	"strings"
+
+	"github.com/xanzy/go-gitlab"
 )
 
 type GitLabReleaseCreator struct {

@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
 	"regexp"
+
+	"github.com/rs/zerolog/log"
 )
 
 var readmeNameRe = regexp.MustCompile(`^# (.+?)\n`)

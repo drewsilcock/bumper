@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
 	"regexp"
 
 	"github.com/Masterminds/semver"
+	"github.com/rs/zerolog/log"
 )
 
 var packageVersionRe = regexp.MustCompile(`(?m)^(\s+)"version":\s*"[^"]+"\s*$`)

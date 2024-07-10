@@ -1,0 +1,19 @@
+issues:
+  exclude-dirs:
+    - .go
+    - .git
+    - .idea
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/drewsilcock/bumper
+
+  godox:
+    keywords:
+      - DO NOT COMMIT
+
+linters:
+  enable:
+    - goimports
+    - gofmt
+    - godox

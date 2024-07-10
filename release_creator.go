@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/manifoldco/promptui"
 	"regexp"
 	"strings"
+
+	"github.com/manifoldco/promptui"
 )
 
 var httpsRemoteRe = regexp.MustCompile(`^https://([^/]+)/(.+?)(?:\.git)?$`)

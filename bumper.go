@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/Masterminds/semver"
-	"github.com/manifoldco/promptui"
-	"github.com/rs/zerolog/log"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/Masterminds/semver"
+	"github.com/manifoldco/promptui"
+	"github.com/rs/zerolog/log"
 )
 
 type BumpType int
