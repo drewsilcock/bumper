@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"github.com/xanzy/go-gitlab"
 	"strings"
@@ -11,8 +12,8 @@ type GitLabReleaseCreator struct {
 	projectName  string
 }
 
-func NewGitLabReleaseCreator(apiKey string, baseURL string, projectName string) (*GitLabReleaseCreator, error) {
-	gitlabClient, err := gitlab.NewClient(apiKey, gitlab.WithBaseURL(fmt.Sprintf("https://%s", baseURL)))
+func NewGitLabReleaseCreator(conf *Config, baseURL string, projectName string) (*GitLabReleaseCreator, error) {
+	gitlabClient, err := gitlab.NewClient(conf.GitlabAPIKey, gitlab.WithBaseURL(fmt.Sprintf("https://%s", baseURL)))
 	if err != nil {
 		return nil, fmt.Errorf("error creating GitLab client: %w", err)
 	}
@@ -25,10 +26,11 @@ func NewGitLabReleaseCreator(apiKey string, baseURL string, projectName string) 
 
 // IsCorrectServer returns true if the specified base URL actually points to a GitLab server.
 func (g *GitLabReleaseCreator) IsCorrectServer() bool {
-	if _, _, err := g.gitlabClient.Version.GetVersion(); err != nil {
+	if _, _, err := g.gitlabClient.Version.GetVersion(); errors.Is(err, gitlab.ErrNotFound) {
 		return false
 	}
 
+	// 401 error is fine - we might not have specified the API key yet.
 	return true
 }
 

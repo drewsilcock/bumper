@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/Masterminds/semver"
+	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
@@ -72,7 +73,7 @@ func (p *PoetryPackager) Name() string {
 }
 
 func (p *PoetryPackager) Version() string {
-	return p.version.String()
+	return fmt.Sprintf("v%s", p.version.String())
 }
 
 func (p *PoetryPackager) PackageFilePath() string {
@@ -84,7 +85,11 @@ func (p *PoetryPackager) BumpVersion(newVersion string) error {
 	if err != nil {
 		return fmt.Errorf("error opening pyproject.toml: %w", err)
 	}
-	defer packageFile.Close()
+	defer func(packageFile *os.File) {
+		if err := packageFile.Close(); err != nil {
+			log.Error().Err(err).Msg("error closing pyproject.toml")
+		}
+	}(packageFile)
 
 	packageBytes, err := io.ReadAll(packageFile)
 	if err != nil {
@@ -95,13 +100,19 @@ func (p *PoetryPackager) BumpVersion(newVersion string) error {
 
 	packageBytes = tomlVersionRe.ReplaceAll(packageBytes, replacementBytes)
 
-	_ = packageFile.Close()
+	if err := packageFile.Close(); err != nil {
+		return fmt.Errorf("error closing pyproject.toml: %w", err)
+	}
 
 	packageFile, err = os.OpenFile(p.packageFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("error opening pyproject.toml: %w", err)
 	}
-	defer packageFile.Close()
+	defer func(packageFile *os.File) {
+		if err := packageFile.Close(); err != nil {
+			log.Error().Err(err).Msg("error closing pyproject.toml")
+		}
+	}(packageFile)
 
 	if _, err := packageFile.Write(packageBytes); err != nil {
 		return fmt.Errorf("error writing to pyproject.toml: %w", err)

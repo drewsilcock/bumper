@@ -20,7 +20,7 @@ const (
 )
 
 type Bumper struct {
-	ShouldConfirm bool
+	conf *Config
 }
 
 func (b *Bumper) Bump() error {
@@ -46,10 +46,6 @@ func (b *Bumper) Bump() error {
 	}
 
 	changelogUpdater := NewChangelogUpdater(cwd)
-	releaseNotes, err := changelogUpdater.GetUnreleasedNotes()
-	if err != nil {
-		return fmt.Errorf("error getting unreleased notes: %w", err)
-	}
 
 	readmeParser := NewReadmeParser(cwd)
 	projectName, err := readmeParser.GetProjectName()
@@ -57,12 +53,12 @@ func (b *Bumper) Bump() error {
 		return fmt.Errorf("error getting project name: %w", err)
 	}
 
-	releaseCreator, err := getReleaseCreator(projectName)
+	releaseCreator, err := getReleaseCreator(projectName, b.conf)
 	if err != nil {
 		return fmt.Errorf("error getting release creator: %w", err)
 	}
 
-	log.Debug().Msgf("Project info: name=%s, path=%s, current version=%s"+projectName, cwd, latestTag)
+	log.Debug().Msgf("Project info: name=%s, path=%s, current version=%s, server=%s", projectName, cwd, latestTag, releaseCreator.Name())
 
 	currentBranch, err := git.GetCurrentBranch()
 	if err != nil {
@@ -79,12 +75,6 @@ func (b *Bumper) Bump() error {
 		return errors.New("uncommitted changes found - commit / stash changes before bumping version")
 	}
 
-	releaseBranchName := fmt.Sprintf("release/%s", latestTag)
-	log.Debug().Msgf("Creating branch %s", releaseBranchName)
-	if err := git.CreateBranch(releaseBranchName); err != nil {
-		return fmt.Errorf("error creating release branch: %w", err)
-	}
-
 	// Use the tag version as the last version as some packages don't contain versions.
 	lastVersion, err := semver.NewVersion(latestTag)
 	if err != nil {
@@ -95,37 +85,57 @@ func (b *Bumper) Bump() error {
 	minorBumpVersion := lastVersion.IncMinor()
 	patchBumpVersion := lastVersion.IncPatch()
 
-	// Prompt for whether to do major, minor or patch bump.
-	prompt := promptui.Select{
-		Label: fmt.Sprintf("Select a version to bump to (current: v%s)", lastVersion),
-		Items: []string{
-			fmt.Sprintf("Major (v%s)", majorBumpVersion.String()),
-			fmt.Sprintf("Minor (v%s)", minorBumpVersion.String()),
-			fmt.Sprintf("Patch (v%s)", patchBumpVersion.String()),
-		},
-	}
+	if b.conf.BumpType == nil {
+		// Prompt for whether to do major, minor or patch bump.
+		prompt := promptui.Select{
+			Label: fmt.Sprintf("Select a version to bump to (current: v%s)", lastVersion),
+			Items: []string{
+				fmt.Sprintf("Major (v%s)", majorBumpVersion.String()),
+				fmt.Sprintf("Minor (v%s)", minorBumpVersion.String()),
+				fmt.Sprintf("Patch (v%s)", patchBumpVersion.String()),
+			},
+		}
 
-	resultIndex, _, err := prompt.Run()
-	if err != nil {
-		return fmt.Errorf("error selecting version bump: %w", err)
+		resultIndex, _, err := prompt.Run()
+		if err != nil {
+			return fmt.Errorf("error selecting version bump: %w", err)
+		}
+
+		b.conf.BumpType = Ptr(BumpType(resultIndex))
 	}
 
 	var bumpVersion semver.Version
-	switch BumpType(resultIndex) {
+	var bumpText string
+	switch *b.conf.BumpType {
 	case BumpTypeMajor:
 		bumpVersion = majorBumpVersion
+		bumpText = "major"
 	case BumpTypeMinor:
 		bumpVersion = minorBumpVersion
+		bumpText = "minor"
 	case BumpTypePatch:
 		bumpVersion = patchBumpVersion
+		bumpText = "patch"
 	default:
 		return errors.New("invalid version bump selection")
 	}
 
 	newVersion := fmt.Sprintf("v%s", bumpVersion.String())
+	log.Info().Msgf("Bumping %s version from %s to %s", bumpText, latestTag, newVersion)
+
+	releaseNotes, err := changelogUpdater.GetVersionNotes(latestTag)
+	if err != nil {
+		return fmt.Errorf("error getting unreleased notes: %w", err)
+	}
+
+	releaseBranchName := fmt.Sprintf("release/%s", newVersion)
+	log.Debug().Msgf("Creating branch %s", releaseBranchName)
+	if err := git.CreateBranch(releaseBranchName); err != nil {
+		return fmt.Errorf("error creating release branch: %w", err)
+	}
 
 	if packager != nil {
-		log.Debug().Msgf("Bumping package version from %s to %s", lastVersion, newVersion)
+		log.Debug().Msgf("Bumping package version from %s to %s", latestTag, newVersion)
 		if err := packager.BumpVersion(newVersion); err != nil {
 			return fmt.Errorf("error bumping package version: %w", err)
 		}
@@ -144,7 +154,7 @@ func (b *Bumper) Bump() error {
 		return fmt.Errorf("error adding changelog: %w", err)
 	}
 
-	if b.ShouldConfirm {
+	if !b.conf.Force {
 		git.RunDiff(true)
 
 		confirmPrompt := promptui.Prompt{
@@ -157,7 +167,6 @@ func (b *Bumper) Bump() error {
 			return fmt.Errorf("error confirming version bump: %w", err)
 		}
 
-		log.Error().Msgf("Should continue: %s", shouldContinue)
 		if strings.ToLower(shouldContinue) != "y" {
 			return errors.New("version bump cancelled")
 		}

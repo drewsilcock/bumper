@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
@@ -64,7 +65,7 @@ func (p *NPMPackager) Name() string {
 }
 
 func (p *NPMPackager) Version() string {
-	return p.version.String()
+	return fmt.Sprintf("v%s", p.version.String())
 }
 
 func (p *NPMPackager) PackageFilePath() string {
@@ -77,7 +78,11 @@ func (p *NPMPackager) BumpVersion(newVersion string) error {
 	if err != nil {
 		return fmt.Errorf("error opening package.json: %w", err)
 	}
-	defer packageFile.Close()
+	defer func(packageFile *os.File) {
+		if err := packageFile.Close(); err != nil {
+			log.Error().Err(err).Msg("error closing package.json")
+		}
+	}(packageFile)
 
 	packageBytes, err := io.ReadAll(packageFile)
 	if err != nil {
@@ -90,14 +95,22 @@ func (p *NPMPackager) BumpVersion(newVersion string) error {
 
 	packageContents = packageVersionRe.ReplaceAllString(packageContents, replacementStr)
 
-	_ = packageFile.Close()
+	if err := packageFile.Close(); err != nil {
+		return fmt.Errorf("error closing package.json: %w", err)
+	}
 
 	packageFile, err = os.OpenFile(p.packageFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("error opening package.json for writing: %w", err)
 	}
+	defer func(packageFile *os.File) {
+		err := packageFile.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("error closing package.json")
+		}
+	}(packageFile)
 
-	if _, err = packageFile.Write(packageBytes); err != nil {
+	if _, err = packageFile.WriteString(packageContents); err != nil {
 		return fmt.Errorf("error writing package.json: %w", err)
 	}
 

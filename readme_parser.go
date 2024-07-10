@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 	"path"
@@ -24,7 +25,12 @@ func (r *ReadmeParser) GetProjectName() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error opening README: %w", err)
 	}
-	defer readmeFile.Close()
+	defer func(readmeFile *os.File) {
+		err := readmeFile.Close()
+		if err != nil {
+			log.Error().Err(err).Msg("error closing README")
+		}
+	}(readmeFile)
 
 	readmeBytes, err := io.ReadAll(readmeFile)
 	if err != nil {
