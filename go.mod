@@ -1,4 +1,4 @@
-module drew.silcock.dev/bumper
+module github.com/drewsilcock/bumper
 
 go 1.22.1
 
