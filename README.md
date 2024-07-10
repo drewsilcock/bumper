@@ -5,12 +5,11 @@
 ## Getting Started
 
 ```bash
-git clone git@github.com:drewsilcock/bumper.git
-cd bumper
-go build
-sudo cp ./bumper /usr/local/bin/bumper
+git install github.com/drewsilcock/bumper@latest
 
 cd ~/my-project
+
+# Assuming you have GOBIN in your PATH, otherwise prepend with "$(go env GOPATH)/bin/"
 bumper
 ```
 
@@ -25,6 +24,6 @@ This is made with my personal workflow in mind, so we make certain assumptions:
 
 ## Configuration
 
-The bump type is input via prompt from the user. I might add CLI arg-based input in the future.
+You can specify the bump type (major, minor, patch) via the the CLI or via a prompt.
 
-If your remote is a GitLab repo, bumper will try to create a GitLab release which will look for an environment variable called `GITLAB_API_KEY` containing an access token with the `api` permission (no other permissions are needed).
+When you first try to create a GitLab release, you will be prompted for a personal access token with the `api` permission. This is stored in the config file `~/.config/bumper/config.toml` for future use.
