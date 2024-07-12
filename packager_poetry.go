@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -13,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var tomlVersionRe = regexp.MustCompile(`^(\s+)version\s*=\s*"[^"]+"\s*$`)
+var tomlVersionRe = regexp.MustCompile(`(?m)^\s*version\s*=\s*"[^"]+"\s*$`)
 
 type PoetryPackager struct {
 	packageFilePath string
@@ -87,7 +88,7 @@ func (p *PoetryPackager) BumpVersion(newVersion string) error {
 		return fmt.Errorf("error opening pyproject.toml: %w", err)
 	}
 	defer func(packageFile *os.File) {
-		if err := packageFile.Close(); err != nil {
+		if err := packageFile.Close(); err != nil && !errors.Is(err, fs.ErrClosed) {
 			log.Error().Err(err).Msg("error closing pyproject.toml")
 		}
 	}(packageFile)
@@ -97,7 +98,10 @@ func (p *PoetryPackager) BumpVersion(newVersion string) error {
 		return fmt.Errorf("error reading pyproject.toml: %w", err)
 	}
 
-	replacementBytes := []byte(fmt.Sprintf(`${1}version = "%s"`, newVersion))
+	if newVersion[0] == 'v' {
+		newVersion = newVersion[1:]
+	}
+	replacementBytes := []byte(fmt.Sprintf("version = \"%s\"\n", newVersion))
 
 	packageBytes = tomlVersionRe.ReplaceAll(packageBytes, replacementBytes)
 

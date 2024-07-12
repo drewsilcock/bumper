@@ -59,7 +59,17 @@ func (b *Bumper) Bump() error {
 		return fmt.Errorf("error getting release creator: %w", err)
 	}
 
-	log.Debug().Msgf("Project info: name=%s, path=%s, current version=%s, server=%s", projectName, cwd, latestTag, releaseCreator.Name())
+	packagerName := "none"
+	if packager != nil {
+		packagerName = packager.Name()
+	}
+	log.Debug().Msgf(
+		"Project info: name=%s, current version=%s, server=%s, packager=%s",
+		projectName,
+		latestTag,
+		releaseCreator.Name(),
+		packagerName,
+	)
 
 	currentBranch, err := git.GetCurrentBranch()
 	if err != nil {
@@ -98,7 +108,9 @@ func (b *Bumper) Bump() error {
 		}
 
 		resultIndex, _, err := prompt.Run()
-		if err != nil {
+		if errors.Is(err, promptui.ErrInterrupt) {
+			return fmt.Errorf("bump aborted")
+		} else if err != nil {
 			return fmt.Errorf("error selecting version bump: %w", err)
 		}
 
@@ -123,11 +135,6 @@ func (b *Bumper) Bump() error {
 
 	newVersion := fmt.Sprintf("v%s", bumpVersion.String())
 	log.Info().Msgf("Bumping %s version from %s to %s", bumpText, latestTag, newVersion)
-
-	releaseNotes, err := changelogUpdater.GetVersionNotes(latestTag)
-	if err != nil {
-		return fmt.Errorf("error getting unreleased notes: %w", err)
-	}
 
 	releaseBranchName := fmt.Sprintf("release/%s", newVersion)
 	log.Debug().Msgf("Creating branch %s", releaseBranchName)
@@ -155,6 +162,12 @@ func (b *Bumper) Bump() error {
 		return fmt.Errorf("error adding changelog: %w", err)
 	}
 
+	// Now that we've updated the changelog, we can pull out the section for the new version.
+	releaseNotes, err := changelogUpdater.GetVersionNotes(newVersion)
+	if err != nil {
+		return fmt.Errorf("error getting version notes: %w", err)
+	}
+
 	if !b.conf.Force {
 		git.RunDiff(true)
 
@@ -164,7 +177,9 @@ func (b *Bumper) Bump() error {
 		}
 
 		shouldContinue, err := confirmPrompt.Run()
-		if err != nil {
+		if errors.Is(err, promptui.ErrAbort) || errors.Is(err, promptui.ErrInterrupt) {
+			return fmt.Errorf("bump aborted")
+		} else if err != nil {
 			return fmt.Errorf("error confirming version bump: %w", err)
 		}
 

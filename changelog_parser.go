@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -53,7 +55,7 @@ func (c *ChangelogUpdater) GetVersionNotes(version string) (string, error) {
 	// `matches[0]` contains full matching string, then rest of slice contains the capture groups in order.
 	matches := versionSectionRe.FindStringSubmatch(changelogContents)
 	if len(matches) != 2 {
-		return "", fmt.Errorf("unreleased section not found in CHANGELOG.md")
+		return "", fmt.Errorf("section for %s not found in CHANGELOG.md", version)
 	}
 
 	return matches[1], nil
@@ -65,7 +67,7 @@ func (c *ChangelogUpdater) Update(newVersion string) error {
 		return fmt.Errorf("error opening CHANGELOG.md: %w", err)
 	}
 	defer func(file *os.File) {
-		if err := file.Close(); err != nil {
+		if err := file.Close(); err != nil && !errors.Is(err, fs.ErrClosed) {
 			log.Error().Err(err).Msg("error closing CHANGELOG.md")
 		}
 	}(file)

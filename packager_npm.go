@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"regexp"
@@ -31,7 +32,11 @@ func (p *NPMPackager) Parse(projectPath string) error {
 	if err != nil {
 		return fmt.Errorf("error opening package.json: %w", err)
 	}
-	defer packageFile.Close()
+	defer func(packageFile *os.File) {
+		if err := packageFile.Close(); err != nil {
+			log.Error().Err(err).Msg("error closing package.json")
+		}
+	}(packageFile)
 
 	packageBytes, err := io.ReadAll(packageFile)
 	if err != nil {
@@ -79,7 +84,7 @@ func (p *NPMPackager) BumpVersion(newVersion string) error {
 		return fmt.Errorf("error opening package.json: %w", err)
 	}
 	defer func(packageFile *os.File) {
-		if err := packageFile.Close(); err != nil {
+		if err := packageFile.Close(); err != nil && !errors.Is(err, fs.ErrClosed) {
 			log.Error().Err(err).Msg("error closing package.json")
 		}
 	}(packageFile)
@@ -91,7 +96,11 @@ func (p *NPMPackager) BumpVersion(newVersion string) error {
 
 	packageContents := string(packageBytes)
 
-	replacementStr := fmt.Sprintf(`$1"version": "%s"`, newVersion)
+	// We don't want the 'v' in the package.json version.
+	if newVersion[0] == 'v' {
+		newVersion = newVersion[1:]
+	}
+	replacementStr := fmt.Sprintf("$1\"version\": \"%s\"\n", newVersion)
 
 	packageContents = packageVersionRe.ReplaceAllString(packageContents, replacementStr)
 
