@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/rs/zerolog"
 	"os"
 	"path"
 	"strings"
@@ -44,14 +45,19 @@ type Config struct {
 	GitlabAPIKey string
 	BumpType     *BumpType
 	Force        bool
+	LogLevel     zerolog.Level
 }
 
 func NewConfig(args Args) *Config {
 	conf := Config{}
 
 	conf.GitlabAPIKey = viper.GetString("gitlab_api_key")
-
 	conf.Force = args.Force
+
+	conf.LogLevel = zerolog.InfoLevel
+	if args.Verbose {
+		conf.LogLevel = zerolog.DebugLevel
+	}
 
 	switch strings.ToLower(args.BumpType) {
 	case "major":

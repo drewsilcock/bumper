@@ -122,6 +122,20 @@ func (g *GitWrapper) HasUncommittedChanges() (bool, error) {
 	return strings.TrimSpace(string(output)) != "", nil
 }
 
+func (g *GitWrapper) RevertChanges() error {
+	restoreStaged := exec.Command("git", "restore", "--staged", ".")
+	if err := restoreStaged.Run(); err != nil {
+		return fmt.Errorf("error restoring staged changes: %w", err)
+	}
+
+	restore := exec.Command("git", "restore", ".")
+	if err := restore.Run(); err != nil {
+		return fmt.Errorf("error restoring changes: %w", err)
+	}
+
+	return nil
+}
+
 func (g *GitWrapper) RunDiff(staged bool) {
 	stagedArg := ""
 	if staged {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,7 @@ var (
 type Args struct {
 	BumpType string
 	Force    bool
+	Verbose  bool
 }
 
 func ExecuteCmd() error {
@@ -43,10 +45,20 @@ func init() {
 		false,
 		"run without confirmation [optional]",
 	)
+
+	rootCmd.PersistentFlags().BoolVarP(
+		&args.Verbose,
+		"verbose",
+		"v",
+		false,
+		"run with verbose logging [optional]",
+	)
 }
 
 func run(_ *cobra.Command, _ []string) {
 	conf := NewConfig(args)
+
+	zerolog.SetGlobalLevel(conf.LogLevel)
 
 	bumper := Bumper{conf: conf}
 	if err := bumper.Bump(); err != nil {

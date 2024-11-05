@@ -14,7 +14,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var packageVersionRe = regexp.MustCompile(`(?m)^(\s+)"version":\s*"[^"]+"\s*$`)
+var packageVersionRe = regexp.MustCompile(`(?m)^(\s+)"version"(\s*):(\s*)"[^"]+"(\s*,?)$`)
 
 type NPMPackager struct {
 	packageFilePath string
@@ -100,7 +100,7 @@ func (p *NPMPackager) BumpVersion(newVersion string) error {
 	if newVersion[0] == 'v' {
 		newVersion = newVersion[1:]
 	}
-	replacementStr := fmt.Sprintf("$1\"version\": \"%s\"\n", newVersion)
+	replacementStr := fmt.Sprintf(`$1"version"$2:$3"%s"$4`, newVersion)
 
 	packageContents = packageVersionRe.ReplaceAllString(packageContents, replacementStr)
 

@@ -151,6 +151,8 @@ func (b *Bumper) Bump() error {
 		if err := git.Add(packager.PackageFilePath()); err != nil {
 			return fmt.Errorf("error adding package file: %w", err)
 		}
+	} else {
+		log.Debug().Msg("No supported package file found - skipping package version bump")
 	}
 
 	log.Debug().Msgf("Shifting unreleased changelog notes to %s", newVersion)
@@ -177,14 +179,24 @@ func (b *Bumper) Bump() error {
 		}
 
 		shouldContinue, err := confirmPrompt.Run()
-		if errors.Is(err, promptui.ErrAbort) || errors.Is(err, promptui.ErrInterrupt) {
-			return fmt.Errorf("bump aborted")
+		if errors.Is(err, promptui.ErrAbort) || errors.Is(err, promptui.ErrInterrupt) || strings.ToLower(shouldContinue) != "y" {
+			log.Debug().Msg("Cancelling bump")
+
+			if err := git.RevertChanges(); err != nil {
+				return fmt.Errorf("error reverting staged changes: %w", err)
+			}
+
+			if err := git.CheckoutBranch("dev"); err != nil {
+				return fmt.Errorf("error switching back to dev branch: %w", err)
+			}
+
+			if err := git.DeleteBranch(releaseBranchName); err != nil {
+				return fmt.Errorf("error deleting release branch: %w", err)
+			}
+
+			return errors.New("version bump cancelled")
 		} else if err != nil {
 			return fmt.Errorf("error confirming version bump: %w", err)
-		}
-
-		if strings.ToLower(shouldContinue) != "y" {
-			return errors.New("version bump cancelled")
 		}
 	}
 
