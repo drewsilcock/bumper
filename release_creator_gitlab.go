@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/xanzy/go-gitlab"
@@ -35,10 +36,10 @@ func (g *GitLabReleaseCreator) IsCorrectServer() bool {
 	return true
 }
 
-func (g *GitLabReleaseCreator) CreateRelease(newVersion string, releaseNotes string) error {
+func (g *GitLabReleaseCreator) CreateRelease(newVersion string, releaseNotes string) (*url.URL, error) {
 	projectID, err := g.getProjectID()
 	if err != nil {
-		return fmt.Errorf("error getting project ID: %w", err)
+		return nil, fmt.Errorf("error getting project ID: %w", err)
 	}
 
 	opts := gitlab.CreateReleaseOptions{
@@ -47,11 +48,17 @@ func (g *GitLabReleaseCreator) CreateRelease(newVersion string, releaseNotes str
 		Description: &releaseNotes,
 	}
 
-	if _, _, err := g.gitlabClient.Releases.CreateRelease(projectID, &opts); err != nil {
-		return fmt.Errorf("error creating release: %w", err)
+	release, _, err := g.gitlabClient.Releases.CreateRelease(projectID, &opts)
+	if err != nil {
+		return nil, fmt.Errorf("error creating release: %w", err)
 	}
 
-	return nil
+	releaseURL, err := url.Parse(release.Links.Self)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing release URL: %w", err)
+	}
+
+	return releaseURL, nil
 }
 
 func (g *GitLabReleaseCreator) Name() string {

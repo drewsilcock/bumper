@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -13,7 +14,7 @@ var sshRemoteRe = regexp.MustCompile(`^git@([^:]+):(.+?)(?:\.git)?$`)
 
 type ReleaseCreator interface {
 	IsCorrectServer() bool
-	CreateRelease(newVersion string, releaseNotes string) error
+	CreateRelease(newVersion string, releaseNotes string) (*url.URL, error)
 	Name() string
 }
 

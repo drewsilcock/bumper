@@ -249,9 +249,12 @@ func (b *Bumper) Bump() error {
 	}
 
 	log.Debug().Msgf("Creating release in %s", releaseCreator.Name())
-	if err := releaseCreator.CreateRelease(newVersion, releaseNotes); err != nil {
+	releaseURL, err := releaseCreator.CreateRelease(newVersion, releaseNotes)
+	if err != nil {
 		return fmt.Errorf("error creating release: %w", err)
 	}
+
+	log.Info().Msgf("Created %s release: %s", releaseCreator.Name(), releaseURL.String())
 
 	log.Info().Msgf("Successfully bumped version from %s to %s", latestTag, newVersion)
 	return nil
