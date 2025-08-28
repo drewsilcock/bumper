@@ -18,7 +18,7 @@ type Packager interface {
 func packagerForProject(projectPath string) Packager {
 	packagers := []Packager{
 		&GoModPackager{},
-		&PoetryPackager{},
+		&PyprojectPackager{},
 		&NPMPackager{},
 	}
 
